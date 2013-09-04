@@ -453,7 +453,7 @@ class CommandConfig(Command):
         path_old = 'resources/mark2.default.properties'
         path_new = find_config('mark2.properties')
 
-        editor = os.environ["EDITOR"] if "EDITOR" in os.environ else "editor"
+        editor = os.environ["EDITOR"] if "EDITOR" in os.environ else "nano"
 
         def write_config(data=''):
             data = "# see resources/mark2.default.properties for details\n" + data
