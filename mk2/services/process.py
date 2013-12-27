@@ -36,7 +36,7 @@ class ProcessProtocol(protocol.ProcessProtocol):
 
     def processEnded(self, reason):
         self.alive = False
-        self.parent.console("process ended {}".format(reason))
+        print "process ended reason={}, value={}".format(reason, reason.value)
 
         if isinstance(reason.value, error.ProcessTerminated) and reason.value.exitCode:
             self.dispatch(events.ServerEvent(cause='server/error/exit-failure',
@@ -44,8 +44,9 @@ class ProcessProtocol(protocol.ProcessProtocol):
                                                  reason.getErrorMessage()),
                                              priority=1))
             self.dispatch(events.FatalError(reason=reason.getErrorMessage()))
-        else:
-            self.dispatch(events.ServerStopped())
+
+        # always respawn...
+        self.dispatch(events.ServerStopped(respawn=True))
 
 
 class Process(Plugin):
@@ -133,7 +134,7 @@ class Process(Plugin):
         if self.failsafe:
             self.failsafe.cancel()
             self.failsafe = None
-        if self.respawn:
+        if self.respawn or e.respawn:
             self.parent.events.dispatch(events.ServerStart())
             self.respawn = False
         elif self.service_stopping:

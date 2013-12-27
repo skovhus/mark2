@@ -97,7 +97,8 @@ class ServerStopping(Event):
 
 class ServerStopped(Event):
     """When the server process finally dies, this event is raised"""
-    pass
+
+    respawn = Event.Arg(required=False)
 
 
 class ServerEvent(Event):
