@@ -2,6 +2,7 @@ import locale
 from twisted.internet import protocol, reactor, error, defer, task
 import glob
 import psutil
+import shlex
 
 
 from mk2 import events
@@ -52,12 +53,16 @@ class Process(Plugin):
     transport = None
     failsafe = None
     stat_process = None
+    done_pattern = Plugin.Property(default='Done \\(([0-9\\.]+)s\\)\\!.*')
+    stop_cmd = Plugin.Property(default='stop\n')
+    java_path = Plugin.Property(default='java')
+    server_args = Plugin.Property(default='')
 
     def setup(self):
         self.register(self.server_input,    events.ServerInput,    priority=EventPriority.MONITOR)
         self.register(self.server_start,    events.ServerStart,    priority=EventPriority.MONITOR)
         self.register(self.server_starting, events.ServerStarting)
-        self.register(self._server_started, events.ServerOutput, pattern='Done \\(([0-9\\.]+)s\\)\\!.*')
+        self.register(self._server_started, events.ServerOutput, pattern=self.done_pattern)
         self.register(self.server_stop,     events.ServerStop,     priority=EventPriority.MONITOR)
         self.register(self.server_stopping, events.ServerStopping, priority=EventPriority.MONITOR)
         self.register(self.server_stopped,  events.ServerStopped,  priority=EventPriority.MONITOR)
@@ -66,12 +71,13 @@ class Process(Plugin):
 
     def build_command(self):
         cmd = []
-        cmd.append('java')
+        cmd.append(self.java_path)
         #cmd.append('-server')
         cmd.extend(self.parent.config.get_jvm_options())
         cmd.append('-jar')
         cmd.append(self.parent.jar_file)
         cmd.append('nogui')
+        cmd.extend(shlex.split(self.server_args))
         return cmd
 
     def server_start(self, e=None):
@@ -97,7 +103,7 @@ class Process(Plugin):
         self.stat_process.start(self.parent.config['java.ps.interval'])
 
     def _server_started(self, e):
-        self.parent.events.dispatch(events.ServerStarted(time=e.match.group(1)))
+        self.parent.events.dispatch(events.ServerStarted())
 
     @defer.inlineCallbacks
     def server_stop(self, e):
@@ -112,7 +118,7 @@ class Process(Plugin):
             self.transport.signalProcess('KILL')
         else:
             self.parent.console("stopping minecraft server")
-            self.transport.write('stop\n')
+            self.transport.write(self.stop_cmd)
             self.failsafe = self.parent.events.dispatch_delayed(events.ServerStop(respawn=e.respawn, reason=e.reason, kill=True, announce=False), self.parent.config['mark2.shutdown_timeout'])
 
     def server_stopping(self, e):
