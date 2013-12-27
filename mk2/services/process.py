@@ -36,9 +36,12 @@ class ProcessProtocol(protocol.ProcessProtocol):
 
     def processEnded(self, reason):
         self.alive = False
+        self.parent.console("process ended {}".format(reason))
+
         if isinstance(reason.value, error.ProcessTerminated) and reason.value.exitCode:
             self.dispatch(events.ServerEvent(cause='server/error/exit-failure',
-                                             data="server exited abnormally: {0}".format(reason.getErrorMessage()),
+                                             data="server exited abnormally: {0}".format(
+                                                 reason.getErrorMessage()),
                                              priority=1))
             self.dispatch(events.FatalError(reason=reason.getErrorMessage()))
         else:
@@ -136,7 +139,7 @@ class Process(Plugin):
         elif self.service_stopping:
             self.service_stopping.callback(0)
         else:
-            print "I'm stopping the reactor now"
+            print "I'm stopping the reactor now {0}, respawn={1}".format(e, self.respawn)
             reactor.stop()
 
     def update_stat(self, process):
